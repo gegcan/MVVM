@@ -15,32 +15,39 @@ class CourseDetailsViewController: UIViewController {
     @IBOutlet private var numberOfTestsLabel: UILabel!
     @IBOutlet private var courseImage: UIImageView!
     @IBOutlet private var favouriteButton: UIButton!
-    
-    var course: Course!
-    
+        
     private var isFavourite = false
+    var viewModel: CourseDetailsViewModelProtocol!
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        loadFavouriteStatus()
         setupUI()
     }
     
     @IBAction func toggleFavorite(_ sender: UIButton) {
-        isFavourite.toggle()
+        viewModel.changeFavouriteStatus()
         let image = setImageForFavoriteButton()
         sender.setImage(image, for: .normal)
-        DataManager.shared.saveFavouriteStatus(for: course.name ?? "", with: isFavourite)
     }
     
     private func setupUI() {
-        courseNameLabel.text = course.name
-        numberOfLessonsLabel.text = "Number of lessons: \(course.numberOfLessons ?? 0)"
-        numberOfTestsLabel.text = "Number of tests: \(course.numberOfTests ?? 0)"
         
-        guard let imageURL = URL(string: course.imageUrl!) else { return }
-        guard let imageData = try? Data(contentsOf: imageURL) else { return }
+//        viewModel.viewModelDidChange = { [weak self] viewModel in
+//            guard let self = self else { return }
+//            self.isFavourite = viewModel.isFavorite
+//        }
+        
+        viewModel.isFavourite.bind { [weak self] isFavoutite in
+            guard let self = self else { return }
+            self.isFavourite = isFavoutite
+        }
+        
+        courseNameLabel.text = viewModel.courseName
+        numberOfLessonsLabel.text = viewModel.numberOfLessons
+        numberOfTestsLabel.text = viewModel.numberOfTests
+        guard let imageData = viewModel.imageData else { return }
         courseImage.image = UIImage(data: imageData)
+        viewModel.setFavouriteStatus()
         
         let image = setImageForFavoriteButton()
         favouriteButton.setImage(image, for: .normal)
@@ -48,9 +55,5 @@ class CourseDetailsViewController: UIViewController {
     
     private func setImageForFavoriteButton() -> UIImage {
         return isFavourite ? #imageLiteral(resourceName: "heartIcon") : #imageLiteral(resourceName: "unselectedHeart")
-    }
-    
-    private func loadFavouriteStatus() {
-        isFavourite = DataManager.shared.loadFavouriteStatus(for: course.name ?? "")
     }
 }

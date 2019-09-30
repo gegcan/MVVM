@@ -12,28 +12,27 @@ class CourseListViewController: UIViewController {
 
     @IBOutlet private var tableView: UITableView!
     
-    private var courses: [Course] = []
+    private var viewModel: CourseListViewModelProtocol! {
+        didSet {
+            viewModel.fetchCourses {
+                DispatchQueue.main.async {
+                    self.tableView.reloadData()
+                }
+            }
+        }
+    }
     
     override func viewDidLoad() {
         super.viewDidLoad()
+        viewModel = CourseListViewModel()
         setupNavigationBar()
-        getCourses()
     }
     
     override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
         guard let indexPath = tableView.indexPathForSelectedRow else { return }
-        let course = courses[indexPath.row]
         let detailVC = segue.destination as! CourseDetailsViewController
-        detailVC.course = course
-    }
-    
-    private func getCourses() {
-        NetworkManager.shared.fetchData() { courses in
-            self.courses = courses
-            DispatchQueue.main.async {
-                self.tableView.reloadData()
-            }
-        }
+        viewModel.selectedRow(for: indexPath)
+        detailVC.viewModel = viewModel.viewModelForSelectedRow()
     }
     
     private func setupNavigationBar() {
@@ -53,14 +52,15 @@ class CourseListViewController: UIViewController {
 extension CourseListViewController: UITableViewDataSource {
     
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        return courses.count
+        return viewModel.numberOfRows() ?? 0
     }
     
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: "courseCell",
                                                  for: indexPath) as! CourseTableViewCell
-        let course = courses[indexPath.row]
-        cell.configure(with: course)
+        
+        let cellViewModel = viewModel.cellViewModel(for: indexPath)
+        cell.viewModel = cellViewModel
         
         return cell
     }
@@ -74,6 +74,6 @@ extension CourseListViewController: UITableViewDelegate {
     }
     
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
-        tableView.deselectRow(at: indexPath, animated: true)
+        tableView.deselectRow(at: indexPath, animated: true) 
     }
 }
